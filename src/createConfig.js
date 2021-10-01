@@ -48,7 +48,9 @@ export const _createConfig = cacheDir => (settings, rawParentConfig) => {
     ],
     output: {
       filename: filename,
-      library: '[name]_[chunkhash]',
+      // library: '[name]_[chunkhash]',
+      library: ['MyLibrary', '[name]_[chunkhash]'], // name is a placeholder here
+      publicPath: path.posix.join(settings.publicPath, settings.path),
     },
   };
 

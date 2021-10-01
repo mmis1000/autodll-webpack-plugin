@@ -75,8 +75,8 @@ class AutoDLLPlugin {
     });
 
     const beforeCompile = (params, callback) => {
-      const dependencies = new Set(params.compilationDependencies);
-      [...dependencies].filter(path => !path.startsWith(cacheDir));
+      const dependencies = new Set(params.compilationDependencies)
+      ;[...dependencies].filter(path => !path.startsWith(cacheDir));
       callback();
     };
 
@@ -87,7 +87,7 @@ class AutoDLLPlugin {
           compiler.hooks.autodllStatsRetrieved.call(stats, source);
 
           if (source === 'memory') return;
-          memory.sync(settings.hash, stats);
+          return memory.sync(settings.hash, stats);
         })
         .then(() => {
           attachDllReferencePlugin(compiler);
@@ -96,25 +96,28 @@ class AutoDLLPlugin {
         .catch(console.error);
     };
 
-    const emit = (compilation, callback) => {
-      const dllAssets = memory.getAssets().reduce((assets, { filename, buffer }) => {
-        const assetPath = path.join(settings.path, filename);
+    const emit = compilation => {
+      compilation.hooks.additionalAssets.tapAsync('AutoDllPlugin', callback => {
+        const dllAssets = memory.getAssets().reduce((assets, { filename, buffer }) => {
+          const assetPath = path.join(settings.path, filename);
 
-        return {
-          ...assets,
-          [assetPath]: new RawSource(buffer),
-        };
-      }, {});
+          return {
+            ...assets,
+            [assetPath]: new RawSource(buffer),
+          };
+        }, {});
 
-      compilation.assets = { ...compilation.assets, ...dllAssets };
+        Object.assign(compilation.assets, dllAssets);
+        // compilation.assets = { ...compilation.assets, ...dllAssets };
 
-      callback();
+        callback();
+      });
     };
 
     compiler.hooks.beforeCompile.tapAsync('AutoDllPlugin', beforeCompile);
     compiler.hooks.run.tapAsync('AutoDllPlugin', watchRun);
     compiler.hooks.watchRun.tapAsync('AutoDllPlugin', watchRun);
-    compiler.hooks.emit.tapAsync('AutoDllPlugin', emit);
+    compiler.hooks.thisCompilation.tap('AutoDllPlugin', emit);
 
     if (inject) {
       const getDllEntriesPaths = extension =>

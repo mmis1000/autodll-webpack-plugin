@@ -32,11 +32,38 @@ const createSync = (cacheDir, fs, mfs) => (hash, stats) => {
       });
     })
     .each(({ filename, buffer }) => {
+      mfs.mkdirpSync(path.dirname(path.posix.join('/assets', filename)));
       mfs.writeFileSync(path.posix.join('/assets', filename), buffer);
     });
 };
 
 const createGetAssets = mfs => () => {
+  const getFiles = (dirPath, baseName) => {
+    let entries = [];
+
+    const fileOrDirs = mfs.readdirSync(dirPath);
+
+    for (let name of fileOrDirs) {
+      const joined = path.posix.join(dirPath, name);
+      const filename = baseName === '' ? name : baseName + '/' + name;
+
+      const isDir = mfs.statSync(path.posix.join(dirPath, name)).isDirectory();
+
+      if (isDir) {
+        entries.push(...getFiles(joined, filename));
+      } else {
+        entries.push({
+          filename,
+          buffer: mfs.readFileSync(joined),
+        });
+      }
+    }
+
+    return entries;
+  };
+
+  return getFiles('/assets', '');
+
   return mfs.readdirSync('/assets').map(filename => ({
     filename,
     buffer: mfs.readFileSync(path.posix.join('/assets', filename)),
